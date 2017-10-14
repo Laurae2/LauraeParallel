@@ -1,0 +1,14 @@
+Package: LauraeParallel
+Type: Package
+Title: Laurae's Parallelization Package
+Version: 1.0
+Date: 2017-14-10
+Authors@R: person("First", "Last", email = "first.last@example.com", role = c("aut", "cre"))
+Depends:
+    R (>= 3.3.0),
+Imports:
+	parallel
+Description: Parallelization with guided/dynamic pragma-like scheduling.
+License: None (I can't be liable for anything you do with it)
+NeedsCompilation: no
+RoxygenNote: 6.0.1
