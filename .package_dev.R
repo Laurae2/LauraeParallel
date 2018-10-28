@@ -3,7 +3,7 @@ library(devtools)
 library(roxygen2) # devtools::install_github("klutometis/roxygen")
 
 # Set the working directory to where I am
-setwd("D:/Data Science/LauraeParallel")
+setwd("E:/GitHub/LauraeParallel")
 
 # Generate documentation
 document()

@@ -73,4 +73,47 @@ system.time({parLapply(cl, (1:6) * airman_speedtest, function(x) {
 stopCluster(cl)
 closeAllConnections()
 
+# More comprehensive example with timeout, requires package R.utils
+
+library(LauraeParallel)
+library(parallel)
+
+cl <- makeCluster(2)
+
+my_fun <- function(x) {
+  Sys.sleep(x)
+  return(x)
+}
+invisible(clusterEvalQ(cl = cl, expr = {
+  library(R.utils)
+}))
+clusterExport(cl = cl, "my_fun")
+
+system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {my_fun(x)})})
+data
+
+# Anything after 0.3 sec of run time or 100 sec of CPU time gets trashed
+system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
+  err <- try(R.utils::withTimeout(my_fun(x), timeout = 100, elapsed = 0.3, onTimeout = "error"))
+  if (class(err) == "try-error") {
+    return("ERROR")
+  } else {
+    return(err)
+  }
+})})
+data
+
+# Anything after 0.3 sec of run time or 0.3 sec of CPU time or 100 sec of run time gets trashed
+system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
+  err <- try(R.utils::withTimeout(my_fun(x), timeout = 100, cpu = 0.3, onTimeout = "error"))
+  if (class(err) == "try-error") {
+    return("ERROR")
+  } else {
+    return(err)
+  }
+})})
+data
+
+stopCluster(cl)
+
 }
