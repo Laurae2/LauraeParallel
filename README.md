@@ -36,33 +36,73 @@ This is how it currently looks:
 With "ERROR" on timeout but keep running:
 
 ```r
-library(LauraeParallel)
-library(parallel)
-library(R.utils)
+> library(LauraeParallel)
+> library(parallel)
+> library(R.utils)
+> 
+> cl <- makeCluster(2)
+> 
+> my_fun <- function(x) {
++   Sys.sleep(x)
++   return(x)
++ }
+> invisible(clusterEvalQ(cl = cl, expr = {
++   library(R.utils)
++ }))
+> clusterExport(cl = cl, "my_fun")
+> 
+> system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {my_fun(x)})})
+   user  system elapsed 
+   0.00    0.02    1.26 
+> data
+[[1]]
+[1] 0.1
 
-cl <- makeCluster(2)
+[[2]]
+[1] 0.2
 
-my_fun <- function(x) {
-  Sys.sleep(x)
-  return(x)
-}
-invisible(clusterEvalQ(cl = cl, expr = {
-  library(R.utils)
-}))
-clusterExport(cl = cl, "my_fun")
+[[3]]
+[1] 0.3
 
-system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {my_fun(x)})})
-data
+[[4]]
+[1] 0.4
 
-system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
-  err <- try(withTimeout(my_fun(x), timeout = 0.3, onTimeout = "error"))
-  if (class(err) == "try-error") {
-    return("ERROR")
-  } else {
-    return(err)
-  }
-})})
-data
+[[5]]
+[1] 0.5
 
-stopCluster(cl)
+[[6]]
+[1] 0.6
+
+> 
+> system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
++   err <- try(withTimeout(my_fun(x), timeout = 0.3, onTimeout = "error"))
++   if (class(err) == "try-error") {
++     return("ERROR")
++   } else {
++     return(err)
++   }
++ })})
+   user  system elapsed 
+   0.00    0.00    1.15 
+> data
+[[1]]
+[1] 0.1
+
+[[2]]
+[1] 0.2
+
+[[3]]
+[1] "ERROR"
+
+[[4]]
+[1] "ERROR"
+
+[[5]]
+[1] "ERROR"
+
+[[6]]
+[1] "ERROR"
+
+> 
+> stopCluster(cl)
 ```

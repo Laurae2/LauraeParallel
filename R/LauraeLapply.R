@@ -58,6 +58,7 @@
 #'
 #' library(LauraeParallel)
 #' library(parallel)
+#' suppressPackageStartupMessages(library(R.utils))
 #'
 #' cl <- makeCluster(2)
 #'
@@ -66,7 +67,7 @@
 #'   return(x)
 #' }
 #' invisible(clusterEvalQ(cl = cl, expr = {
-#'   library(R.utils)
+#'   suppressPackageStartupMessages(library(R.utils))
 #' }))
 #' clusterExport(cl = cl, "my_fun")
 #'
