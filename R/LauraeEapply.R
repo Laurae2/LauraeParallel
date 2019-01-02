@@ -1,13 +1,15 @@
-#' Laurae's Parallel Apply with Load Balancing
+#' Laurae's Parallel Environment Apply with Load Balancing
 #'
-#' This function performs \code{parallel::parLapply} with proper load balancing (OpenMP-like pragma guided/dynamic instead of pragma static in \code{parallel::parLapply}).
+#' This function performs \code{parallel::parLapply} using an environment as the input list, with proper load balancing (OpenMP-like pragma guided/dynamic instead of pragma static in \code{parallel::parLapply}).
+#' 
+#' In contrast to \code{base:eapply}, the executed function remains in \code{.GlobalEnv} (or the environment in which it is executed). Actually, you could just do \code{LauraeParallel::LauraeLapply(cl = cl, x = eapply(x, function(x) {x}), fun = fun, ...)}. Nothing new...
 #'
 #' Pragma guided/dynamic works very well for long tasks which have dynamic computation time (such as machine learning tasks on large data). However, it becomes very poor when data is computed very quickly, as the overhead increases dramatically. With the default \code{parallel::parLapply}, data is chunked for each worker first, then submitted (static pragma), which makes it significantly faster on (not too) smaller data.
 #'
 #' Please check the example to understand the difference between guided/dynamic pragma and static pragma scheduling for parallelization.
 #'
 #' @param cl Type: cluster. It must be created by \code{snow}.
-#' @param x Type: vector (atomic or list).
+#' @param x Type: environment.
 #' @param fun Type: function to parallelize.
 #' @param ... More parameters to pass to the function.
 #'
@@ -20,6 +22,11 @@
 #'
 #' # Set this to 1 for more realistic testing...
 #' airman_speedtest <- 0.1
+#' 
+#' my_env <- new.env()
+#' for (i in 1:6) {
+#'   my_env[[as.character(i)]] <- i * airman_speedtest
+#' }
 #'
 #' # Guided/Dynamic scheduling: 12 Seconds
 #' # Preparation: none
@@ -30,7 +37,7 @@
 #' # 06s => end 4, start 6
 #' # 08s => end 5
 #' # 12s => end 6
-#' system.time({LauraeLapply(cl, (1:6) * airman_speedtest, function(x) {
+#' system.time({LauraeEapply(cl, my_env, function(x) {
 #'   Sys.sleep(x)
 #'   return(x)
 #' })})
@@ -46,7 +53,7 @@
 #' # 06s => end 3
 #' # 09s => end 5, start 6
 #' # 15s => end 6
-#' system.time({parLapply(cl, (1:6) * airman_speedtest, function(x) {
+#' system.time({parLapply(cl, eapply(my_env, function(x) {x}), function(x) {
 #'   Sys.sleep(x)
 #'   return(x)
 #' })})
@@ -70,12 +77,17 @@
 #'   suppressPackageStartupMessages(library(R.utils))
 #' }))
 #' clusterExport(cl = cl, "my_fun")
+#' 
+#' my_env_fast <- new.env()
+#' for (i in 1:6) {
+#'   my_env_fast[[as.character(i)]] <- i * 0.1
+#' }
 #'
-#' system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {my_fun(x)})})
+#' system.time({data <- LauraeEapply(cl, my_env_fast, function(x) {my_fun(x)})})
 #' data
 #'
 #' # Anything after 0.3 sec of run time or 100 sec of CPU time gets trashed
-#' system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
+#' system.time({data <- LauraeEapply(cl, my_env_fast, function(x) {
 #'   err <- try(R.utils::withTimeout(my_fun(x), timeout = 100, elapsed = 0.3, onTimeout = "error"))
 #'   if (class(err) == "try-error") {
 #'     return("ERROR")
@@ -86,7 +98,7 @@
 #' data
 #'
 #' # Anything after 0.3 sec of run time or 0.3 sec of CPU time or 100 sec of run time gets trashed
-#' system.time({data <- LauraeLapply(cl, (1:6) * 0.1, function(x) {
+#' system.time({data <- LauraeEapply(cl, my_env_fast, function(x) {
 #'   err <- try(R.utils::withTimeout(my_fun(x), timeout = 100, cpu = 0.3, onTimeout = "error"))
 #'   if (class(err) == "try-error") {
 #'     return("ERROR")
@@ -99,25 +111,10 @@
 #' stopCluster(cl)
 #' closeAllConnections()
 #'
-#' @rdname LauraeLapply
+#' @rdname LauraeEapply
 #'
 #' @export
 
-LauraeLapply <- function(cl, x, fun, ...) {
-  parallel::clusterCall(cl, LauraeParallel.init, fun, ...)
-  r <- parallel::clusterApplyLB(cl, x, LauraeParallel.worker)
-  parallel::clusterEvalQ(cl, rm(".LauraeParallel.fun", ".LauraeParallel.args", pos = globalenv()))
-  return(r)
-}
-
-#' @rdname LauraeLapply
-LauraeParallel.init <- function(fun, ...) {
-  assign(".LauraeParallel.fun", fun, pos = globalenv())
-  assign(".LauraeParallel.args", list(...), pos = globalenv())
-  NULL
-}
-
-#' @rdname LauraeLapply
-LauraeParallel.worker <- function(x) {
-  do.call(".LauraeParallel.fun", c(list(x), .LauraeParallel.args))
+LauraeEapply <- function(cl, x, fun, ...) {
+  return(LauraeParallel::LauraeLapply(cl = cl, x = eapply(x, function(x) {x}), fun = fun, ...))
 }

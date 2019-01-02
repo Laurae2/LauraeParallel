@@ -12,4 +12,4 @@ document()
 devtools::check(document = TRUE)
 
 # Install package
-install("./")
+install(".")
